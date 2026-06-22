@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MBTI 資料</title>
+  <title>個人用画像保管庫</title>
   <style>
     :root {
       color-scheme: light;
@@ -104,6 +104,34 @@
     }
 
     [hidden] { display: none !important; }
+
+    .auth-gate {
+      display: grid;
+      gap: 16px;
+      justify-items: center;
+      margin: min(16vh, 120px) auto 24px;
+      padding: clamp(24px, 6vw, 48px);
+      text-align: center;
+    }
+
+    .auth-gate-title {
+      margin: 0;
+      font-size: clamp(1.6rem, 5vw, 2.6rem);
+    }
+
+    .auth-gate-message {
+      max-width: 38rem;
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.8;
+    }
+
+    .auth-gate-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+    }
 
     .toolbar[hidden] { display: none; }
 
@@ -804,6 +832,14 @@
 </head>
 <body>
   <main class="app-shell">
+    <section id="authGate" class="auth-gate viewer-card" aria-live="polite">
+      <h1 id="authGateTitle" class="auth-gate-title">個人用画像保管庫</h1>
+      <p id="authGateMessage" class="auth-gate-message">管理者Googleアカウントでログインしてください。ログインするまで画像一覧や画像URLは取得・表示しません。</p>
+      <div class="auth-gate-actions">
+        <button id="gateLoginButton" class="auth-button" type="button">Googleでログイン</button>
+        <button id="gateLogoutButton" class="auth-button" type="button" hidden>ログアウト</button>
+      </div>
+    </section>
     <button id="toolbarOpenFixed" class="toolbar-open-fixed" type="button" hidden>開く</button>
     <section id="toolbar" class="toolbar viewer-card" aria-label="一覧操作">
       <div class="toolbar-header">
@@ -828,7 +864,7 @@
               <span id="tagInfoPanel" class="tag-info-panel" role="status" hidden>タグ検索は大文字・小文字を区別しません。検索中のタグはURLにも保存されるため、そのURLを共有すると同じタグ検索状態で開けます。</span>
             </span>
           </div>
-          <input id="searchInput" type="search" placeholder="例: NT、内向、チーム" autocomplete="off" aria-label="タグで資料を検索">
+          <input id="searchInput" type="search" placeholder="例: 旅行、家族、資料" autocomplete="off" aria-label="タグで画像を検索">
           <div id="searchSuggestions" class="search-suggestions" role="listbox" aria-label="既存タグ検索候補" hidden></div>
         </div>
         <div class="search-control advanced-on-mobile">
@@ -879,7 +915,7 @@
         </div>
       </div>
     </section>
-    <section id="gallery" class="gallery" aria-label="MBTI資料サンプル一覧"></section>
+    <section id="gallery" class="gallery" aria-label="個人用画像一覧"></section>
   </main>
 
   <script type="module">
@@ -889,12 +925,12 @@
     import { deleteObject, getDownloadURL, getStorage, ref, uploadBytes } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-storage.js";
 
     const firebaseConfig = {
-      apiKey: "AIzaSyDwIdnlDMOsu_dVvyDluC7TI-aa_dK6SFs",
-      authDomain: "mbti-materials.firebaseapp.com",
-      projectId: "mbti-materials",
-      storageBucket: "mbti-materials.firebasestorage.app",
-      messagingSenderId: "454015561766",
-      appId: "1:454015561766:web:c749e2a5e57d20dffbb6e7"
+      apiKey: "AIzaSyCbSQe4OCQWLp82NU38tOdTorAygoKymlM",
+      authDomain: "privatemyimages-6ca9f.firebaseapp.com",
+      projectId: "privatemyimages-6ca9f",
+      storageBucket: "privatemyimages-6ca9f.firebasestorage.app",
+      messagingSenderId: "659759899704",
+      appId: "1:659759899704:web:2f55de70762a3ecb42b2cd"
     };
 
     // 管理者UIDはこの1か所だけ変更してください。Security RulesのADMIN_UIDと同じ値にします。
@@ -913,6 +949,7 @@
     let replacingMaterialId = "";
     let draggedMaterialId = "";
     let hasInitializedSort = false;
+    let unsubscribeMaterials = null;
 
     const gallery = document.querySelector("#gallery");
     const sizeRange = document.querySelector("#sizeRange");
@@ -924,6 +961,11 @@
     const authStatus = document.querySelector("#authStatus");
     const loginButton = document.querySelector("#loginButton");
     const logoutButton = document.querySelector("#logoutButton");
+    const authGate = document.querySelector("#authGate");
+    const authGateTitle = document.querySelector("#authGateTitle");
+    const authGateMessage = document.querySelector("#authGateMessage");
+    const gateLoginButton = document.querySelector("#gateLoginButton");
+    const gateLogoutButton = document.querySelector("#gateLogoutButton");
     const uploadControl = document.querySelector("#uploadControl");
     const uploadLabel = document.querySelector("#uploadLabel");
     const sortSelect = document.querySelector("#sortSelect");
@@ -980,8 +1022,12 @@
       }
     }
 
+    function isAdminUser(user = currentUser) {
+      return Boolean(user && user.uid === ADMIN_UID);
+    }
+
     function canUpload() {
-      return Boolean(currentUser && currentUser.uid === ADMIN_UID);
+      return isAdminUser();
     }
 
     function shouldLockToolbarScroll() {
@@ -1318,7 +1364,7 @@
       const visibleItems = visibleEntries();
 
       if (!visibleItems.length) {
-        gallery.innerHTML = `<p class="empty-message">${queryText || excludeQueryText ? "条件に一致する画像がありません。検索タグや除外タグを変更してください。" : "Firestoreに保存された画像はまだありません。"}</p>`;
+        gallery.innerHTML = `<p class="empty-message">${queryText || excludeQueryText ? "条件に一致する画像がありません。検索タグや除外タグを変更してください。" : "個人用画像保管庫に保存された画像はまだありません。"}</p>`;
         saveOrderButton.disabled = true;
         return;
       }
@@ -1369,17 +1415,29 @@
     }
 
     function updateAuthUi() {
-      const uploadAllowed = canUpload() && !isUploading && !replacingMaterialId;
+      const isLoggedIn = Boolean(currentUser);
+      const isAdmin = isAdminUser();
+      const uploadAllowed = isAdmin && !isUploading && !replacingMaterialId;
+      authGate.hidden = isAdmin;
+      gallery.hidden = !isAdmin;
+      toolbar.hidden = !isAdmin;
+      toolbarOpenFixed.hidden = !isAdmin || !toolbar.hidden;
+      gateLoginButton.hidden = isLoggedIn;
+      gateLogoutButton.hidden = !isLoggedIn;
+      authGateTitle.textContent = !isLoggedIn ? "個人用画像保管庫" : "アクセス拒否";
+      authGateMessage.textContent = !isLoggedIn
+        ? "管理者Googleアカウントでログインしてください。ログインするまで画像一覧や画像URLは取得・表示しません。"
+        : "このGoogleアカウントは個人用画像保管庫の管理者ではありません。別の管理者Googleアカウントでログインし直してください。";
       imageUpload.disabled = !uploadAllowed;
-      uploadControl.hidden = !currentUser;
-      uploadNote.hidden = !currentUser;
+      uploadControl.hidden = !isAdmin;
+      uploadNote.hidden = !isAdmin;
       uploadControl.setAttribute("aria-disabled", String(!uploadAllowed));
       uploadLabel.textContent = isUploading ? "アップロード中..." : "画像を追加";
-      loginButton.hidden = Boolean(currentUser);
-      logoutButton.hidden = !currentUser;
-      authStatus.textContent = currentUser ? `${currentUser.displayName || "ログイン中"}でログイン中` : "ログインしていません";
-      if (!currentUser) setMessage("閲覧はログイン不要です。アップロードするにはGoogleログインしてください。");
-      else if (!canUpload()) setMessage("このGoogleアカウントにはアップロード権限がありません。管理者UIDを設定してください。");
+      loginButton.hidden = isLoggedIn;
+      logoutButton.hidden = !isLoggedIn;
+      authStatus.textContent = isLoggedIn ? `${currentUser.displayName || "ログイン中"}でログイン中` : "ログインしていません";
+      if (!isLoggedIn) setMessage("個人用画像保管庫を利用するには管理者Googleアカウントでログインしてください。");
+      else if (!isAdmin) setMessage("アクセス拒否：このGoogleアカウントは個人用画像保管庫の管理者ではありません。");
       else if (replacingMaterialId) setMessage("画像を上書き中です。完了までお待ちください。");
       else setMessage("画像ファイルを選択、または Ctrl+V / ⌘V で貼り付けてアップロードできます。各画像の「画像を上書き」から差し替えもできます。");
       renderGallery();
@@ -1620,21 +1678,27 @@
       }
     }
 
-    loginButton.addEventListener("click", async () => {
+    async function signInWithGoogle() {
       try { await signInWithPopup(auth, provider); }
       catch (error) {
         console.error("Google login failed", error);
         showFirebaseError("Googleログイン", error);
       }
-    });
+    }
 
-    logoutButton.addEventListener("click", async () => {
+    loginButton.addEventListener("click", signInWithGoogle);
+    gateLoginButton.addEventListener("click", signInWithGoogle);
+
+    async function signOutCurrentUser() {
       try { await signOut(auth); }
       catch (error) {
-        console.error("Logout failed", error);
-        showFirebaseError("ログアウト", error);
+        console.error("Google logout failed", error);
+        showFirebaseError("Googleログアウト", error);
       }
-    });
+    }
+
+    logoutButton.addEventListener("click", signOutCurrentUser);
+    gateLogoutButton.addEventListener("click", signOutCurrentUser);
 
     imageUpload.addEventListener("change", async (event) => {
       await uploadImageFiles(event.target.files);
@@ -1847,24 +1911,42 @@
     updateOrientationToggle();
     updateAuthUi();
 
-    onAuthStateChanged(auth, (user) => {
-      currentUser = user;
-      updateAuthUi();
-    });
+    function stopMaterialsSubscription() {
+      if (!unsubscribeMaterials) return;
+      unsubscribeMaterials();
+      unsubscribeMaterials = null;
+    }
 
-    onSnapshot(query(collection(db, "materials")), (snapshot) => {
-      materials.splice(0, materials.length, ...snapshot.docs.map((documentSnapshot) => ({
-        id: documentSnapshot.id,
-        ...documentSnapshot.data()
-      })));
-      if (!hasInitializedSort) {
-        sortSelect.value = materials.some((item) => Number.isFinite(item.sortOrder)) ? "custom" : "createdAt";
-        hasInitializedSort = true;
-      }
+    function clearPrivateMaterials() {
+      materials.splice(0, materials.length);
+      hasInitializedSort = false;
       renderGallery();
-    }, (error) => {
-      console.error("Firestore materials subscription failed", error);
-      showFirebaseError("Firestore一覧取得", error);
+    }
+
+    function startMaterialsSubscriptionForAdmin() {
+      if (unsubscribeMaterials || !isAdminUser()) return;
+      unsubscribeMaterials = onSnapshot(query(collection(db, "materials")), (snapshot) => {
+        materials.splice(0, materials.length, ...snapshot.docs.map((documentSnapshot) => ({
+          id: documentSnapshot.id,
+          ...documentSnapshot.data()
+        })));
+        if (!hasInitializedSort) {
+          sortSelect.value = materials.some((item) => Number.isFinite(item.sortOrder)) ? "custom" : "createdAt";
+          hasInitializedSort = true;
+        }
+        renderGallery();
+      }, (error) => {
+        console.error("Firestore materials subscription failed", error);
+        showFirebaseError("Firestore一覧取得", error);
+      });
+    }
+
+    onAuthStateChanged(auth, (user) => {
+      stopMaterialsSubscription();
+      currentUser = user;
+      clearPrivateMaterials();
+      updateAuthUi();
+      if (isAdminUser()) startMaterialsSubscriptionForAdmin();
     });
   </script>
 </body>
