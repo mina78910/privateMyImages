@@ -14,8 +14,7 @@ service cloud.firestore {
     }
 
     match /materials/{materialId} {
-      allow read: if true;
-      allow create, update, delete: if isAdmin();
+      allow read, create, update, delete: if isAdmin();
     }
   }
 }
@@ -33,7 +32,7 @@ service firebase.storage {
     }
 
     match /users/{userId}/images/{fileName} {
-      allow read: if true;
+      allow read: if isAdmin() && request.auth.uid == userId;
       allow create, update: if isAdmin()
         && request.auth.uid == userId
         && request.resource.size <= 10 * 1024 * 1024
