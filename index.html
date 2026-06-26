@@ -383,10 +383,11 @@
       transform: translateX(-50%);
       z-index: 30;
       display: grid;
+      grid-template-rows: auto auto minmax(0, 1fr);
       gap: 12px;
       width: min(calc(100vw - 24px), 760px);
-      max-height: min(70vh, 560px);
-      overflow: auto;
+      max-height: min(70vh, 560px, calc(100dvh - var(--tag-picker-top, 96px) - 12px));
+      overflow: hidden;
       padding: 16px;
       border: 1px solid rgba(104, 115, 134, 0.22);
       border-radius: 22px;
@@ -445,6 +446,11 @@
       flex-wrap: wrap;
       gap: 9px;
       align-content: start;
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding-right: 4px;
+      -webkit-overflow-scrolling: touch;
     }
 
     .tag-option-button {
