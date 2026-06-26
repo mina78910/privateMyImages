@@ -386,8 +386,8 @@
       grid-template-rows: auto auto minmax(0, 1fr);
       gap: 12px;
       width: min(calc(100vw - 24px), 760px);
-      height: min(70dvh, 560px, var(--tag-picker-available-height, calc(100dvh - var(--tag-picker-top, 96px) - 12px)));
-      max-height: var(--tag-picker-available-height, calc(100dvh - var(--tag-picker-top, 96px) - 12px));
+      height: min(560px, var(--tag-picker-available-height, calc(100dvh - var(--tag-picker-top, 96px) - 12px)));
+      max-height: calc(100dvh - 24px);
       overflow: hidden;
       padding: 16px;
       border: 1px solid rgba(104, 115, 134, 0.22);
@@ -1074,7 +1074,10 @@
       if (isExpanded) {
         const buttonRect = tagPickerButton.getBoundingClientRect();
         const desiredPanelTop = Math.max(12, buttonRect.bottom + 10);
-        const panelTop = Math.min(desiredPanelTop, Math.max(12, window.innerHeight - 180));
+        const minUsablePanelHeight = 320;
+        const panelTop = window.innerHeight - desiredPanelTop - 12 >= minUsablePanelHeight
+          ? desiredPanelTop
+          : Math.max(12, window.innerHeight - minUsablePanelHeight - 12);
         tagPickerPanel.style.setProperty("--tag-picker-top", `${panelTop}px`);
         tagPickerPanel.style.setProperty("--tag-picker-available-height", `${Math.max(180, window.innerHeight - panelTop - 12)}px`);
         renderTagPicker();
