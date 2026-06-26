@@ -476,10 +476,6 @@
       font-weight: 800;
     }
 
-    .tag-picker.advanced-on-mobile { display: none; }
-
-    .toolbar.is-expanded .tag-picker.advanced-on-mobile { display: grid; }
-
     .search-control input, .sort-select { width: 100%; }
 
     .sort-tools {
@@ -826,13 +822,14 @@
       .auth-actions { width: 100%; }
       .upload-control { justify-content: center; width: 100%; }
       .tag-picker { width: 100%; }
+      .tag-picker-panel {
+        position: static;
+        width: 100%;
+        max-height: min(62dvh, 520px);
+        transform: none;
+      }
       .advanced-on-mobile { display: none; }
       .toolbar.is-expanded .advanced-on-mobile { display: grid; }
-      body.toolbar-scroll-lock {
-        position: fixed;
-        width: 100%;
-        overflow: hidden;
-      }
     }
   </style>
 </head>
@@ -995,8 +992,6 @@
     const initialExcludeTagQuery = searchParams.get("exclude") || searchParams.get("excludeTags") || "";
     const minCardSize = Number(sizeRange.min);
     const maxCardSize = Number(sizeRange.max);
-    const mobileToolbarQuery = window.matchMedia("(max-width: 560px)");
-    let toolbarScrollLockY = 0;
     let isLandscapeView = false;
 
 
@@ -1036,36 +1031,12 @@
       return isAdminUser();
     }
 
-    function shouldLockToolbarScroll() {
-      return !isLandscapeView && mobileToolbarQuery.matches && !toolbar.hidden && !toolbarContent.hidden;
-    }
-
-    function setToolbarScrollLock(isLocked) {
-      const isCurrentlyLocked = document.body.classList.contains("toolbar-scroll-lock");
-      if (isLocked === isCurrentlyLocked) return;
-
-      if (isLocked) {
-        toolbarScrollLockY = window.scrollY;
-        document.body.style.top = `-${toolbarScrollLockY}px`;
-        document.body.classList.add("toolbar-scroll-lock");
-        return;
-      }
-
-      document.body.classList.remove("toolbar-scroll-lock");
-      document.body.style.top = "";
-      window.scrollTo(0, toolbarScrollLockY);
-    }
-
-    function updateToolbarScrollLock() {
-      setToolbarScrollLock(shouldLockToolbarScroll());
-    }
 
     function setToolbarExpanded(isExpanded) {
       toolbarContent.hidden = !isExpanded;
       toolbarToggle.setAttribute("aria-expanded", String(isExpanded));
       toolbar.classList.toggle("is-expanded", isExpanded);
       toolbarToggle.textContent = isExpanded ? "さらにメニューを閉じる" : "さらにメニューを開く";
-      updateToolbarScrollLock();
     }
 
     function setToolbarVisible(isVisible) {
@@ -1076,7 +1047,6 @@
         setTagPickerExpanded(false);
         hideSearchSuggestions();
       }
-      updateToolbarScrollLock();
     }
 
     function setTagInfoExpanded(isExpanded) {
@@ -1839,12 +1809,6 @@
     document.addEventListener("fullscreenchange", () => {
       if (!document.fullscreenElement && isLandscapeView) setLandscapeView(false);
     });
-
-    if (mobileToolbarQuery.addEventListener) {
-      mobileToolbarQuery.addEventListener("change", updateToolbarScrollLock);
-    } else {
-      mobileToolbarQuery.addListener(updateToolbarScrollLock);
-    }
 
     tagInfoButton.addEventListener("click", () => {
       setTagInfoExpanded(tagInfoPanel.hidden);
