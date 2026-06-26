@@ -381,7 +381,7 @@
       left: 50%;
       top: var(--tag-picker-top, 96px);
       transform: translateX(-50%);
-      z-index: 30;
+      z-index: 80;
       display: grid;
       grid-template-rows: auto auto minmax(0, 1fr);
       gap: 12px;
@@ -824,11 +824,9 @@
       .upload-control { justify-content: center; width: 100%; }
       .tag-picker { width: 100%; }
       .tag-picker-panel {
-        position: static;
-        width: 100%;
-        height: auto;
-        max-height: min(62dvh, 520px);
-        transform: none;
+        width: min(calc(100vw - 24px), 760px);
+        height: min(62dvh, var(--tag-picker-available-height, 520px));
+        max-height: calc(100dvh - 24px);
       }
       .advanced-on-mobile { display: none; }
       .toolbar.is-expanded .advanced-on-mobile { display: grid; }
@@ -989,6 +987,7 @@
     const tagPickerClose = document.querySelector("#tagPickerClose");
     const tagPickerFilter = document.querySelector("#tagPickerFilter");
     const tagPickerOptions = document.querySelector("#tagPickerOptions");
+    document.body.append(tagPickerPanel);
     const searchParams = new URLSearchParams(window.location.search);
     const initialTagQuery = searchParams.get("tag") || searchParams.get("tags") || "";
     const initialExcludeTagQuery = searchParams.get("exclude") || searchParams.get("excludeTags") || "";
@@ -1852,7 +1851,7 @@
 
     document.addEventListener("click", (event) => {
       if (!tagInfoPanel.hidden && !event.target.closest(".tag-info-wrapper")) setTagInfoExpanded(false);
-      if (!tagPickerPanel.hidden && !event.target.closest(".tag-picker")) setTagPickerExpanded(false);
+      if (!tagPickerPanel.hidden && !event.target.closest(".tag-picker") && !event.target.closest("#tagPickerPanel")) setTagPickerExpanded(false);
       if (!event.target.closest(".tag-form")) gallery.querySelectorAll(".tag-form").forEach(hideTagSuggestions);
       if (!event.target.closest("#searchInput") && !event.target.closest("#searchSuggestions")) hideSearchSuggestions();
     });
