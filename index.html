@@ -7,14 +7,14 @@
   <style>
     :root {
       color-scheme: light;
-      --bg: #f7f3eb;
-      --panel: rgba(255, 255, 255, 0.88);
-      --ink: #27313f;
-      --muted: #687386;
-      --accent: #6f5de7;
-      --accent-2: #19a7a8;
-      --ring: rgba(111, 93, 231, 0.28);
-      --shadow: 0 18px 45px rgba(42, 39, 58, 0.16);
+      --bg: #eef7ef;
+      --panel: rgba(255, 255, 255, 0.9);
+      --ink: #26352b;
+      --muted: #65756a;
+      --accent: #2f8f5b;
+      --accent-2: #f08a3c;
+      --ring: rgba(47, 143, 91, 0.26);
+      --shadow: 0 18px 45px rgba(35, 56, 41, 0.16);
       --radius: 24px;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans JP", sans-serif;
     }
@@ -26,9 +26,9 @@
       min-height: 100vh;
       color: var(--ink);
       background:
-        radial-gradient(circle at top left, rgba(255, 201, 121, 0.38), transparent 34rem),
-        radial-gradient(circle at 90% 8%, rgba(119, 215, 216, 0.34), transparent 28rem),
-        linear-gradient(135deg, #fbf7ef 0%, var(--bg) 55%, #eef7f7 100%);
+        radial-gradient(circle at top left, rgba(255, 178, 96, 0.34), transparent 34rem),
+        radial-gradient(circle at 90% 8%, rgba(96, 191, 126, 0.34), transparent 28rem),
+        linear-gradient(135deg, #fff5e8 0%, var(--bg) 55%, #e7f5ea 100%);
     }
 
     button, input, select { font: inherit; }
@@ -169,12 +169,12 @@
 
     .toolbar-close {
       color: var(--accent);
-      background: rgba(111, 93, 231, 0.12);
+      background: rgba(47, 143, 91, 0.13);
     }
 
     .orientation-toggle {
       color: var(--accent);
-      background: rgba(111, 93, 231, 0.12);
+      background: rgba(47, 143, 91, 0.13);
     }
 
     .orientation-toggle.is-active {
@@ -184,7 +184,7 @@
 
     body.landscape-view {
       overflow: hidden;
-      background: #f7f3eb;
+      background: #eef7ef;
     }
 
     body.landscape-view .app-shell {
@@ -258,7 +258,7 @@
 
     .auth-button {
       color: var(--accent);
-      background: rgba(111, 93, 231, 0.12);
+      background: rgba(47, 143, 91, 0.13);
     }
 
     .upload-control {
@@ -362,7 +362,7 @@
       border-radius: 999px;
       padding: 11px 16px;
       color: var(--accent);
-      background: rgba(111, 93, 231, 0.1);
+      background: rgba(47, 143, 91, 0.11);
       font-weight: 950;
       cursor: pointer;
       text-align: center;
@@ -371,7 +371,7 @@
 
     .tag-picker-button:hover, .tag-picker-button:focus-visible {
       border-color: var(--accent);
-      background: rgba(111, 93, 231, 0.16);
+      background: rgba(47, 143, 91, 0.18);
       box-shadow: 0 0 0 4px var(--ring);
       outline: none;
     }
@@ -478,6 +478,27 @@
     }
 
     .search-control input, .sort-select { width: 100%; }
+
+    .tagless-filter {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      width: fit-content;
+      padding: 11px 14px;
+      border-radius: 999px;
+      color: var(--ink);
+      background: rgba(47, 143, 91, 0.11);
+      font-weight: 950;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .tagless-filter input {
+      width: 1.05em;
+      height: 1.05em;
+      margin: 0;
+      accent-color: var(--accent);
+    }
 
     .sort-tools {
       display: flex;
@@ -713,7 +734,7 @@
 
     .tag-list-toggle {
       color: var(--accent);
-      background: rgba(111, 93, 231, 0.12);
+      background: rgba(47, 143, 91, 0.13);
     }
 
     .tag-suggestions, .search-suggestions {
@@ -772,11 +793,11 @@
 
     .replace-control {
       color: var(--accent);
-      background: rgba(111, 93, 231, 0.12);
+      background: rgba(47, 143, 91, 0.13);
     }
 
     .replace-control:hover, .replace-control:focus-visible {
-      background: rgba(111, 93, 231, 0.2);
+      background: rgba(47, 143, 91, 0.22);
     }
 
     .delete-button {
@@ -874,6 +895,10 @@
           <label for="excludeSearchInput">検索除外タグ</label>
           <input id="excludeSearchInput" type="search" placeholder="例: 古い、重複、不要" autocomplete="off" aria-label="除外したいタグで資料を絞り込み">
         </div>
+        <label class="tagless-filter advanced-on-mobile" for="taglessOnlyInput">
+          <input id="taglessOnlyInput" type="checkbox">
+          <span>タグなしだけ表示</span>
+        </label>
         <div class="search-control tag-picker advanced-on-mobile">
           <label for="tagPickerButton">タグ一覧</label>
           <button id="tagPickerButton" class="tag-picker-button" type="button" aria-expanded="false" aria-controls="tagPickerPanel">全タグから選ぶ</button>
@@ -960,6 +985,7 @@
     const searchInput = document.querySelector("#searchInput");
     const searchSuggestions = document.querySelector("#searchSuggestions");
     const excludeSearchInput = document.querySelector("#excludeSearchInput");
+    const taglessOnlyInput = document.querySelector("#taglessOnlyInput");
     const uploadNote = document.querySelector("#uploadNote");
     const authStatus = document.querySelector("#authStatus");
     const loginButton = document.querySelector("#loginButton");
@@ -991,6 +1017,7 @@
     const searchParams = new URLSearchParams(window.location.search);
     const initialTagQuery = searchParams.get("tag") || searchParams.get("tags") || "";
     const initialExcludeTagQuery = searchParams.get("exclude") || searchParams.get("excludeTags") || "";
+    const initialTaglessOnly = ["1", "true", "yes"].includes((searchParams.get("tagless") || "").toLowerCase());
     const minCardSize = Number(sizeRange.min);
     const maxCardSize = Number(sizeRange.max);
     let isLandscapeView = false;
@@ -1217,11 +1244,14 @@
     function syncSearchQueryToUrl() {
       const queryText = searchInput.value.trim();
       const excludeQueryText = excludeSearchInput.value.trim();
+      const taglessOnly = taglessOnlyInput.checked;
       const nextUrl = new URL(window.location.href);
       if (queryText) nextUrl.searchParams.set("tag", queryText);
       else nextUrl.searchParams.delete("tag");
       if (excludeQueryText) nextUrl.searchParams.set("exclude", excludeQueryText);
       else nextUrl.searchParams.delete("exclude");
+      if (taglessOnly) nextUrl.searchParams.set("tagless", "1");
+      else nextUrl.searchParams.delete("tagless");
       nextUrl.searchParams.delete("tags");
       nextUrl.searchParams.delete("excludeTags");
       window.history.replaceState({}, "", nextUrl);
@@ -1300,8 +1330,9 @@
         .filter(Boolean);
     }
 
-    function matchesSearch(item, includeQueryText, excludeQueryText) {
+    function matchesSearch(item, includeQueryText, excludeQueryText, taglessOnly = false) {
       const tags = itemTags(item).map((tag) => tag.toLowerCase());
+      if (taglessOnly && tags.length) return false;
       const includeTerms = splitTagQuery(includeQueryText);
       const excludeTerms = splitTagQuery(excludeQueryText);
       const hasIncludedTag = !includeTerms.length || includeTerms.every((term) => tags.some((tag) => tag.includes(term)));
@@ -1335,9 +1366,10 @@
     function visibleEntries() {
       const queryText = searchInput.value.trim().toLowerCase();
       const excludeQueryText = excludeSearchInput.value.trim().toLowerCase();
+      const taglessOnly = taglessOnlyInput.checked;
       return sortedMaterials()
         .map((item, displayIndex) => ({ item, displayIndex, materialIndex: materials.findIndex((material) => material.id === item.id) }))
-        .filter(({ item }) => matchesSearch(item, queryText, excludeQueryText));
+        .filter(({ item }) => matchesSearch(item, queryText, excludeQueryText, taglessOnly));
     }
 
     function renderGallery() {
@@ -1347,7 +1379,7 @@
       const visibleItems = visibleEntries();
 
       if (!visibleItems.length) {
-        gallery.innerHTML = `<p class="empty-message">${queryText || excludeQueryText ? "条件に一致する画像がありません。検索タグや除外タグを変更してください。" : "個人用画像保管庫に保存された画像はまだありません。"}</p>`;
+        gallery.innerHTML = `<p class="empty-message">${queryText || excludeQueryText || taglessOnlyInput.checked ? "条件に一致する画像がありません。検索タグ・除外タグ・タグなし条件を変更してください。" : "個人用画像保管庫に保存された画像はまだありません。"}</p>`;
         saveOrderButton.disabled = true;
         return;
       }
@@ -1873,6 +1905,10 @@
       syncSearchQueryToUrl();
       renderGallery();
     });
+    taglessOnlyInput.addEventListener("change", () => {
+      syncSearchQueryToUrl();
+      renderGallery();
+    });
     sortSelect.addEventListener("change", renderGallery);
     saveOrderButton.addEventListener("click", saveCurrentOrder);
     if (initialTagQuery) {
@@ -1881,6 +1917,10 @@
     }
     if (initialExcludeTagQuery) {
       excludeSearchInput.value = initialExcludeTagQuery;
+      setToolbarExpanded(true);
+    }
+    if (initialTaglessOnly) {
+      taglessOnlyInput.checked = true;
       setToolbarExpanded(true);
     }
     syncSearchQueryToUrl();
