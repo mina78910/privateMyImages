@@ -885,7 +885,7 @@
             <label for="searchInput">タグ検索</label>
             <span class="tag-info-wrapper">
               <button id="tagInfoButton" class="tag-info-button" type="button" aria-expanded="false" aria-controls="tagInfoPanel" aria-label="タグ検索の仕様を表示">i</button>
-              <span id="tagInfoPanel" class="tag-info-panel" role="status" hidden>タグ検索は大文字・小文字を区別しません。検索中のタグはURLにも保存されるため、そのURLを共有すると同じタグ検索状態で開けます。</span>
+              <span id="tagInfoPanel" class="tag-info-panel" role="status" hidden>タグ検索は大文字・小文字を区別しません。複数タグはスペース・読点・カンマで区切れ、いずれかのタグに一致する画像を表示します。検索中のタグはURLにも保存されるため、そのURLを共有すると同じタグ検索状態で開けます。</span>
             </span>
           </div>
           <input id="searchInput" type="search" placeholder="例: 旅行、家族、資料" autocomplete="off" aria-label="タグで画像を検索">
@@ -1015,8 +1015,8 @@
     const tagPickerOptions = document.querySelector("#tagPickerOptions");
     document.body.append(tagPickerPanel);
     const searchParams = new URLSearchParams(window.location.search);
-    const initialTagQuery = searchParams.get("tag") || searchParams.get("tags") || "";
-    const initialExcludeTagQuery = searchParams.get("exclude") || searchParams.get("excludeTags") || "";
+    const initialTagQuery = combinedSearchParam(searchParams, ["tag", "tags"]);
+    const initialExcludeTagQuery = combinedSearchParam(searchParams, ["exclude", "excludeTags"]);
     const initialTaglessOnly = ["1", "true", "yes"].includes((searchParams.get("tagless") || "").toLowerCase());
     const minCardSize = Number(sizeRange.min);
     const maxCardSize = Number(sizeRange.max);
@@ -1323,6 +1323,14 @@
       return Array.isArray(item.tags) ? item.tags : [];
     }
 
+    function combinedSearchParam(params, names) {
+      return names
+        .flatMap((name) => params.getAll(name))
+        .flatMap(splitTagQuery)
+        .filter((value, index, values) => values.indexOf(value) === index)
+        .join(" ");
+    }
+
     function splitTagQuery(queryText) {
       return queryText
         .split(/[\s,、]+/)
@@ -1335,7 +1343,7 @@
       if (taglessOnly && tags.length) return false;
       const includeTerms = splitTagQuery(includeQueryText);
       const excludeTerms = splitTagQuery(excludeQueryText);
-      const hasIncludedTag = !includeTerms.length || includeTerms.every((term) => tags.some((tag) => tag.includes(term)));
+      const hasIncludedTag = !includeTerms.length || includeTerms.some((term) => tags.some((tag) => tag.includes(term)));
       const hasExcludedTag = excludeTerms.some((term) => tags.some((tag) => tag.includes(term)));
       return hasIncludedTag && !hasExcludedTag;
     }
