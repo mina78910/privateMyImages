@@ -33,6 +33,8 @@
 
     button, input, select { font: inherit; }
 
+    a { color: inherit; }
+
 
     .sr-only {
       position: absolute;
@@ -779,6 +781,71 @@
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
+      align-items: center;
+    }
+
+    .link-menu {
+      position: relative;
+      display: inline-flex;
+    }
+
+    .link-menu-button {
+      display: inline-grid;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      border: 0;
+      border-radius: 999px;
+      color: var(--accent);
+      background: rgba(47, 143, 91, 0.13);
+      font-weight: 950;
+      cursor: pointer;
+    }
+
+    .link-menu-button:hover, .link-menu-button:focus-visible {
+      background: rgba(47, 143, 91, 0.22);
+      outline: none;
+    }
+
+    .link-menu-panel {
+      position: absolute;
+      right: 0;
+      bottom: calc(100% + 8px);
+      z-index: 30;
+      display: grid;
+      gap: 6px;
+      min-width: 104px;
+      padding: 8px;
+      border: 1px solid rgba(104, 115, 134, 0.22);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.97);
+      box-shadow: 0 14px 34px rgba(42, 39, 58, 0.16);
+    }
+
+    .link-menu-panel[hidden] { display: none; }
+
+    .link-menu-action {
+      border: 0;
+      border-radius: 999px;
+      padding: 8px 11px;
+      color: var(--ink);
+      background: rgba(39, 49, 63, 0.08);
+      font-size: 0.84rem;
+      font-weight: 900;
+      text-align: center;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .link-menu-action:hover, .link-menu-action:focus-visible {
+      color: white;
+      background: var(--accent);
+      outline: none;
+    }
+
+    .link-menu-action:disabled {
+      color: var(--muted);
+      background: rgba(104, 115, 134, 0.08);
     }
 
     .replace-control, .delete-button, .move-button {
@@ -1323,6 +1390,22 @@
       return Array.isArray(item.tags) ? item.tags : [];
     }
 
+    function materialLinkUrl(item) {
+      return String(item?.linkUrl || item?.url || "").trim();
+    }
+
+    function normalizeUrlInput(value) {
+      const trimmedValue = String(value || "").trim();
+      if (!trimmedValue) return "";
+      if (/^https?:\/\//i.test(trimmedValue)) return trimmedValue;
+      return `https://${trimmedValue}`;
+    }
+
+    function closeLinkMenus() {
+      gallery.querySelectorAll(".link-menu-button").forEach((button) => button.setAttribute("aria-expanded", "false"));
+      gallery.querySelectorAll(".link-menu-panel").forEach((panel) => { panel.hidden = true; });
+    }
+
     function combinedSearchParam(params, names) {
       return names
         .flatMap((name) => params.getAll(name))
@@ -1395,6 +1478,8 @@
       gallery.innerHTML = visibleItems.map(({ item, materialIndex }, visibleIndex) => {
         const title = escapeHtml(item.title || item.originalFileName || "無題の画像");
         const src = escapeHtml(item.imageUrl);
+        const linkUrl = materialLinkUrl(item);
+        const escapedLinkUrl = escapeHtml(linkUrl);
         const isLoggedIn = Boolean(currentUser);
         const canEditTags = canUpload();
         const tags = itemTags(item).map((value) => {
@@ -1407,10 +1492,17 @@
             <button class="move-button" type="button" data-move-index="${visibleIndex}" data-move-direction="-1" ${visibleIndex === 0 ? "disabled" : ""}>前へ</button>
             <button class="move-button" type="button" data-move-index="${visibleIndex}" data-move-direction="1" ${visibleIndex === visibleItems.length - 1 ? "disabled" : ""}>後へ</button>
             <label class="replace-control" for="replace-${escapeHtml(item.id)}" aria-label="${title}を上書き">
-              画像を上書き
+              上書き
               <input id="replace-${escapeHtml(item.id)}" class="sr-only replace-input" type="file" accept="image/*" data-replace-index="${materialIndex}">
             </label>
-            <button class="delete-button" type="button" data-delete-index="${materialIndex}" aria-label="${title}を削除">画像を削除</button>
+            <button class="delete-button" type="button" data-delete-index="${materialIndex}" aria-label="${title}を削除">削除</button>
+            <span class="link-menu">
+              <button class="link-menu-button" type="button" data-link-menu-index="${materialIndex}" aria-expanded="false" aria-controls="link-menu-${escapeHtml(item.id)}" aria-label="${title}のURLメニュー">🔗</button>
+              <span id="link-menu-${escapeHtml(item.id)}" class="link-menu-panel" role="menu" hidden>
+                <button class="link-menu-action" type="button" data-open-url-index="${materialIndex}" ${linkUrl ? `data-url="${escapedLinkUrl}"` : "disabled"}>開く</button>
+                <button class="link-menu-action" type="button" data-edit-url-index="${materialIndex}">編集</button>
+              </span>
+            </span>
           </div>
         ` : "";
 
@@ -1462,7 +1554,7 @@
       if (!isLoggedIn) setMessage("個人用画像保管庫を利用するには管理者Googleアカウントでログインしてください。");
       else if (!isAdmin) setMessage("アクセス拒否：このGoogleアカウントは個人用画像保管庫の管理者ではありません。");
       else if (replacingMaterialId) setMessage("画像を上書き中です。完了までお待ちください。");
-      else setMessage("画像ファイルを選択、または Ctrl+V / ⌘V で貼り付けてアップロードできます。各画像の「画像を上書き」から差し替えもできます。");
+      else setMessage("画像ファイルを選択、または Ctrl+V / ⌘V で貼り付けてアップロードできます。各画像の「上書き」から差し替え、「🔗」からURLを保存できます。");
       renderGallery();
     }
 
@@ -1562,6 +1654,34 @@
       } catch (error) {
         console.error("Material deletion failed", error);
         showFirebaseError("画像削除", error);
+      }
+    }
+
+    async function editMaterialUrl(index) {
+      if (!canUpload()) {
+        setMessage("URL編集には管理者Googleアカウントでのログインが必要です。");
+        return;
+      }
+
+      const item = materials[index];
+      if (!item) return;
+
+      const title = item.title || item.originalFileName || "この画像";
+      const currentUrl = materialLinkUrl(item);
+      const inputValue = window.prompt(`${title}に保存するURLを入力してください。\n空欄で保存するとURLを削除します。`, currentUrl);
+      if (inputValue === null) return;
+
+      const linkUrl = normalizeUrlInput(inputValue);
+      try {
+        await updateDoc(doc(db, "materials", item.id), {
+          linkUrl,
+          url: linkUrl,
+          urlUpdatedAt: serverTimestamp()
+        });
+        showSuccessMessage(linkUrl ? `${title}のURLを保存しました。` : `${title}のURLを削除しました。`);
+      } catch (error) {
+        console.error("URL update failed", error);
+        showFirebaseError("URL更新", error);
       }
     }
 
@@ -1683,6 +1803,8 @@
               storagePath,
               ownerId: currentUser.uid,
               originalFileName: file.name || uniqueName,
+              linkUrl: "",
+              url: "",
               createdAt: serverTimestamp()
             });
           } catch (error) {
@@ -1781,6 +1903,33 @@
       const removeTagButton = event.target.closest("[data-remove-tag-index]");
       if (removeTagButton) {
         await removeTagFromMaterial(Number(removeTagButton.dataset.removeTagIndex), removeTagButton.dataset.tag);
+        return;
+      }
+
+      const linkMenuButton = event.target.closest(".link-menu-button");
+      if (linkMenuButton) {
+        const panel = document.getElementById(linkMenuButton.getAttribute("aria-controls"));
+        const willOpen = panel?.hidden;
+        closeLinkMenus();
+        if (panel && willOpen) {
+          panel.hidden = false;
+          linkMenuButton.setAttribute("aria-expanded", "true");
+        }
+        return;
+      }
+
+      const openUrlButton = event.target.closest("[data-open-url-index]");
+      if (openUrlButton) {
+        const url = materialLinkUrl(materials[Number(openUrlButton.dataset.openUrlIndex)]);
+        if (url) window.open(url, "_blank", "noopener");
+        closeLinkMenus();
+        return;
+      }
+
+      const editUrlButton = event.target.closest("[data-edit-url-index]");
+      if (editUrlButton) {
+        closeLinkMenus();
+        await editMaterialUrl(Number(editUrlButton.dataset.editUrlIndex));
         return;
       }
 
@@ -1893,11 +2042,14 @@
       if (!tagInfoPanel.hidden && !event.target.closest(".tag-info-wrapper")) setTagInfoExpanded(false);
       if (!tagPickerPanel.hidden && !event.target.closest(".tag-picker") && !event.target.closest("#tagPickerPanel")) setTagPickerExpanded(false);
       if (!event.target.closest(".tag-form")) gallery.querySelectorAll(".tag-form").forEach(hideTagSuggestions);
+      if (!event.target.closest(".link-menu")) closeLinkMenus();
       if (!event.target.closest("#searchInput") && !event.target.closest("#searchSuggestions")) hideSearchSuggestions();
     });
 
     document.addEventListener("keydown", (event) => {
-      if (event.key !== "Escape" || tagPickerPanel.hidden) return;
+      if (event.key !== "Escape") return;
+      closeLinkMenus();
+      if (tagPickerPanel.hidden) return;
       setTagPickerExpanded(false);
       tagPickerButton.focus();
     });
